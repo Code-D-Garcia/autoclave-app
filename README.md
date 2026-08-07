@@ -199,4 +199,4 @@ py -m pytest -v
 
 ## 👨‍💻 Autor y Licencia
 
-Desarrollado como solución a prueba técnica para evaluación de competencias en desarrollo Backend / Full-Stack con Python. Apoyandome en la IA para la interfaz y validaciones de datos. Asi como en la organización de esta documentación para transmitir de mejor manera mis ideas.
+Desarrollado como solución a prueba técnica para evaluación de competencias en desarroll de software con Python. Apoyandome en la IA para la interfaz y validaciones de datos. Asi como en la organización de esta documentación para transmitir de mejor manera mis ideas.
