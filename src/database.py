@@ -26,21 +26,37 @@ DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
-def get_connection():
-    """Intenta conectar a PostgreSQL. Retorna la conexión o None si no está disponible."""
+# Estado de disponibilidad de la base de datos para evitar bloqueos TCP repetidos
+_db_available: Optional[bool] = None
+_last_db_check_time: float = 0.0
+
+def get_connection(force_recheck: bool = False):
+    """Intenta conectar a PostgreSQL de forma optimizada sin bloquear la aplicación si la BD no está disponible."""
+    global _db_available, _last_db_check_time
+    import time
+
+    now = time.time()
+    # Si ya sabemos que PostgreSQL no está disponible y la verificación fue reciente, responder al instante (0ms)
+    if not force_recheck and _db_available is False and (now - _last_db_check_time) < 20:
+        return None
+
     try:
         import psycopg2
         conn = psycopg2.connect(
-            host=DB_HOST,
-            port=DB_PORT,
-            dbname=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            connect_timeout=3
+            host=DB_HOST or "127.0.0.1",
+            port=DB_PORT or 5432,
+            dbname=DB_NAME or "db_autoclave_esterilizacion",
+            user=DB_USER or "postgres",
+            password=DB_PASSWORD or "postgres",
+            connect_timeout=1
         )
+        _db_available = True
+        _last_db_check_time = now
         return conn
     except Exception as e:
-        logger.debug(f"PostgreSQL no disponible ({e}). Operando en modo memoria.")
+        _db_available = False
+        _last_db_check_time = now
+        logger.debug(f"PostgreSQL no disponible ({e}). Operando en modo memoria ultrarrápido.")
         return None
 
 
@@ -334,13 +350,61 @@ def clear_all_stored_lots() -> bool:
         return False
 
 
+def _get_in_memory_analytical_summary() -> List[Dict[str, Any]]:
+    """Calcula las métricas analíticas agrupadas por autoclave y mes desde la memoria caché."""
+    if not _in_memory_lots:
+        return []
+
+    groups: Dict[tuple, List[Dict[str, Any]]] = {}
+    for lot in _in_memory_lots:
+        autoclave = lot.get("autoclave") or "AUT-01"
+        start_time = str(lot.get("start_time", ""))
+        month = start_time[:7] if len(start_time) >= 7 else "2026-08"
+        key = (autoclave, month)
+        if key not in groups:
+            groups[key] = []
+        groups[key].append(lot)
+
+    results = []
+    for (autoclave_id, mes), lots_list in sorted(groups.items(), key=lambda x: (x[0][1], x[0][0]), reverse=True):
+        lotes_procesados = len(lots_list)
+        total_readings = 0
+        sum_temp = 0.0
+        alerts_out_of_range = 0
+        approved_count = 0
+
+        for lot in lots_list:
+            if lot.get("status") == "APPROVED":
+                approved_count += 1
+
+            for r in lot.get("readings", []):
+                total_readings += 1
+                sum_temp += float(r.get("temperature", 0.0))
+                if r.get("classification") and r.get("classification") != "NORMAL":
+                    alerts_out_of_range += 1
+
+        avg_temp = round(sum_temp / total_readings, 2) if total_readings > 0 else 0.0
+        pct_approved = round((approved_count / lotes_procesados) * 100.0, 2) if lotes_procesados > 0 else 0.0
+
+        results.append({
+            "autoclave_id": autoclave_id,
+            "mes": mes,
+            "lotes_procesados": lotes_procesados,
+            "temperatura_promedio": avg_temp,
+            "total_lecturas_fuera_de_rango": alerts_out_of_range,
+            "porcentaje_lotes_aprobados": pct_approved
+        })
+
+    return results
+
+
 def get_analytical_summary() -> List[Dict[str, Any]]:
     """
-    Ejecuta la Consulta Analítica de la Pregunta 2 en PostgreSQL y retorna los resultados.
+    Ejecuta la Consulta Analítica de la Pregunta 2 en PostgreSQL (o fallback en memoria).
     """
     conn = get_connection()
     if not conn:
-        return []
+        return _get_in_memory_analytical_summary()
 
     sql = """
     SELECT 
@@ -374,8 +438,12 @@ def get_analytical_summary() -> List[Dict[str, Any]]:
                     "porcentaje_lotes_aprobados": float(row[5]) if row[5] else 0.0
                 })
         conn.close()
+
+        if not results and _in_memory_lots:
+            return _get_in_memory_analytical_summary()
+
         return results
     except Exception as e:
         logger.error(f"Error al consultar métricas analíticas: {e}")
         if conn: conn.close()
-        return []
+        return _get_in_memory_analytical_summary()
