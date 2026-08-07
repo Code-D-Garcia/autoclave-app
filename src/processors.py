@@ -37,8 +37,8 @@ def classify_reading(
     Returns:
         ReadingStatus: El estado de la lectura (NORMAL, ALERTA, CRÍTICA).
     """
-    temp_ok = temp_min <= temperature <= temp_max
-    press_ok = press_min <= pressure <= press_max
+    temp_ok = min_temp <= temperature <= max_temp
+    press_ok = min_press <= pressure <= max_press
 
     if temp_ok and press_ok:
         return ReadingStatus.NORMAL
@@ -116,7 +116,7 @@ def calculate_lot_summary(lot: Lot) -> Tuple[LotSummary, List[AlertDetails]]:
             ok_readings += 1
         else:
             list_alerts.append(AlertDetails(
-                timestamp=r.timestamp,
+                date=r.timestamp,
                 temperature=r.temperature,
                 pressure=r.pressure,
                 classification=classification
@@ -160,5 +160,6 @@ def process_single_lot(lot: Lot) -> LotReport:
         end_time=lot.end_time,
         status=status,
         summary=summary,
-        alerts=alerts
+        alerts=alerts,
+        readings=lot.readings
     )

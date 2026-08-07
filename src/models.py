@@ -103,6 +103,7 @@ class LotReport:
     status: LotStatus
     summary: LotSummary
     alerts: List[AlertDetails] = field(default_factory=list)
+    readings: List[Reading] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -113,5 +114,6 @@ class LotReport:
             "end_time": self.end_time.isoformat(),
             "status": self.status.value,
             "summary": self.summary.to_dict(),
-            "alerts": [alert.to_dict() for alert in self.alerts]
+            "alerts": [alert.to_dict() for alert in self.alerts],
+            "readings": [reading.to_dict() for reading in self.readings]
         }
