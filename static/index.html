@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Control de Esterilización - Autoclaves</title>
+    <!-- Google Fonts: Inter y JetBrains Mono para telemetría -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar Navigation / Control Panel -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07l14.14-14.14"/>
+                        <circle cx="12" cy="12" r="9"/>
+                    </circle></svg>
+                </div>
+                <div class="brand-text">
+                    <h1>Autoclave Control</h1>
+                    <span class="version-tag">v1.0.0 &bull; Control QC</span>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Cargar o Ingresar Lotes</h3>
+                
+                <div class="tab-buttons">
+                    <button class="tab-btn active" data-tab="upload">📁 Subir JSON</button>
+                    <button class="tab-btn" data-tab="editor">📝 Editor JSON</button>
+                    <button class="tab-btn" data-tab="manual">➕ Nuevo Lote</button>
+                </div>
+
+                <!-- Tab 1: Upload File -->
+                <div class="tab-content active" id="tab-upload">
+                    <div class="drop-zone" id="drop-zone">
+                        <svg class="upload-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <p class="drop-text">Arrastra un archivo <strong>.json</strong> aquí</p>
+                        <p class="drop-sub">o haz clic para seleccionar</p>
+                        <input type="file" id="file-input" accept=".json" hidden>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Raw JSON Editor -->
+                <div class="tab-content" id="tab-editor">
+                    <textarea id="json-editor" class="code-textarea" spellcheck="false" placeholder='{"lotes": [...]}'></textarea>
+                    <div class="editor-actions">
+                        <button id="btn-format-json" class="btn btn-secondary btn-sm">Format JSON</button>
+                        <button id="btn-submit-json" class="btn btn-primary btn-sm">Procesar JSON</button>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Manual Lot Creator -->
+                <div class="tab-content" id="tab-manual">
+                    <form id="manual-lot-form" class="manual-form">
+                        <div class="form-group">
+                            <label>ID del Lote</label>
+                            <input type="text" id="m-lot-id" required placeholder="Ej. AT-2026-0004">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Producto</label>
+                                <input type="text" id="m-product" required placeholder="Ej. Atún en aceite 170 g">
+                            </div>
+                            <div class="form-group">
+                                <label>Autoclave</label>
+                                <input type="text" id="m-autoclave" required placeholder="Ej. AUT-01">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Inicio ISO (Auto)</label>
+                                <input type="text" id="m-start" readonly value="2026-08-01T10:00:00-05:00" style="opacity: 0.7; background-color: var(--bg-main);">
+                            </div>
+                            <div class="form-group">
+                                <label>Fin ISO (Auto)</label>
+                                <input type="text" id="m-end" readonly value="2026-08-01T11:30:00-05:00" style="opacity: 0.7; background-color: var(--bg-main);">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Temp Min / Max (°C)</label>
+                                <div class="dual-input">
+                                    <input type="number" step="0.1" id="m-min-temp" value="121.0">
+                                    <input type="number" step="0.1" id="m-max-temp" value="134.0">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Pres Min / Max (bar)</label>
+                                <div class="dual-input">
+                                    <input type="number" step="0.1" id="m-min-press" value="2.0">
+                                    <input type="number" step="0.1" id="m-max-press" value="3.1">
+                                </div>
+                            </div>
+                        </div>
+
+                        <label class="section-sublabel">Lecturas (Timestamp, Temp, Presión)</label>
+                        <div id="readings-container">
+                            <!-- Dynamic reading inputs -->
+                        </div>
+                        <button type="button" id="btn-add-reading-row" class="btn btn-secondary btn-sm" style="width: 100%; margin-top: 6px;">+ Agregar Lectura</button>
+
+                        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 12px;">Procesar Lote Manual</button>
+                    </form>
+                </div>
+
+                <div class="preset-box">
+                    <span class="preset-title">¿Deseas probar rápidamente?</span>
+                    <button id="btn-load-sample" class="btn btn-accent btn-block">
+                        ⚡ Cargar Datos de Muestra (3 Lotes)
+                    </button>
+                </div>
+            </div>
+
+            <!-- API Status Footer -->
+            <div class="sidebar-footer">
+                <div class="status-indicator online">
+                    <span class="pulse"></span>
+                    <span id="api-status-label">API Conectada (127.0.0.1:8000)</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <!-- Top App Bar -->
+            <header class="topbar">
+                <div class="topbar-title">
+                    <h2>Panel de Análisis y Conformidad de Esterilización</h2>
+                    <p class="subtitle">Verificación de ciclos de autoclaves según parámetros térmicos y barométricos.</p>
+                </div>
+                <div class="topbar-actions">
+                    <button id="btn-export-json" class="btn btn-secondary" disabled>
+                        📥 Exportar Resultado JSON
+                    </button>
+                    <button id="btn-clear-all" class="btn btn-outline">
+                        🗑️ Limpiar
+                    </button>
+                </div>
+            </header>
+
+            <!-- Metrics Summary Bar -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <span class="metric-label">Lotes Procesados</span>
+                    <span class="metric-value" id="stat-total">0</span>
+                    <span class="metric-foot" id="stat-total-foot">Esperando datos</span>
+                </div>
+                <div class="metric-card success">
+                    <span class="metric-label">Lotes Aprobados</span>
+                    <span class="metric-value" id="stat-approved">0</span>
+                    <span class="metric-foot">100% Sin alertas</span>
+                </div>
+                <div class="metric-card warning">
+                    <span class="metric-label">En Observación</span>
+                    <span class="metric-value" id="stat-onhold">0</span>
+                    <span class="metric-foot">1 a 2 Alertas registradas</span>
+                </div>
+                <div class="metric-card danger">
+                    <span class="metric-label">Rechazados / Errores</span>
+                    <span class="metric-value" id="stat-rejected">0</span>
+                    <span class="metric-foot">> 2 Alertas o error formato</span>
+                </div>
+            </div>
+
+            <!-- Filter and Lots List Container -->
+            <div class="content-body">
+                <!-- Left Sub-column: Lot Selection List -->
+                <section class="lots-sidebar">
+                    <div class="filter-bar">
+                        <input type="text" id="lot-search-input" placeholder="Buscar por ID, producto..." class="search-input">
+                        <select id="lot-filter-status" class="filter-select">
+                            <option value="ALL">Todos los Estados</option>
+                            <option value="APPROVED">Aprobados</option>
+                            <option value="ON_HOLD">En Observación</option>
+                            <option value="REJECTED">Rechazados</option>
+                        </select>
+                    </div>
+
+                    <div id="lots-list-container" class="lots-list">
+                        <!-- Empty state initially -->
+                        <div class="empty-state">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                            <p>No hay lotes cargados en este momento.</p>
+                            <span class="subtext">Sube un archivo JSON o usa "Cargar Datos de Muestra".</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Right Sub-column: Detailed View of Selected Lot -->
+                <section class="lot-detail-panel" id="lot-detail-panel">
+                    <div class="detail-empty" id="detail-empty-view">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        <h3>Selecciona un Lote</h3>
+                        <p>Haz clic en cualquier lote de la lista izquierda para visualizar su informe de conformidad, alertas y tabla de lecturas.</p>
+                    </div>
+
+                    <!-- Lot Content View (Hidden until lot selected) -->
+                    <div class="detail-content hidden" id="detail-content-view">
+                        <!-- Detail Header -->
+                        <div class="detail-header">
+                            <div class="detail-title-group">
+                                <div class="title-row">
+                                    <h3 id="det-lot-id">LOT-XXXX</h3>
+                                    <span id="det-status-badge" class="badge">APPROVED</span>
+                                </div>
+                                <div class="meta-row">
+                                    <span>📦 <strong id="det-product">-</strong></span>
+                                    <span>⚙️ <strong id="det-autoclave">-</strong></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Lot Timings & Limits Grid -->
+                        <div class="spec-grid">
+                            <div class="spec-item">
+                                <span class="spec-label">Tiempo de Ciclo</span>
+                                <span class="spec-val" id="det-time-range">-</span>
+                            </div>
+                            <div class="spec-item">
+                                <span class="spec-label">Rango Temp Esperado</span>
+                                <span class="spec-val" id="det-temp-range">- °C</span>
+                            </div>
+                            <div class="spec-item">
+                                <span class="spec-label">Rango Presión Esperado</span>
+                                <span class="spec-val" id="det-press-range">- bar</span>
+                            </div>
+                            <div class="spec-item">
+                                <span class="spec-label">Promedios Registrados</span>
+                                <span class="spec-val" id="det-averages">-</span>
+                            </div>
+                        </div>
+
+                        <!-- Alerts Section (If any) -->
+                        <div class="alerts-card hidden" id="alerts-card">
+                            <div class="card-header alert-header">
+                                <h4>🚨 Registro de Alertas Encontradas (<span id="alert-count-num">0</span>)</h4>
+                            </div>
+                            <div class="table-wrapper">
+                                <table class="data-table" id="alerts-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Timestamp</th>
+                                            <th>Temperatura (°C)</th>
+                                            <th>Presión (bar)</th>
+                                            <th>Clasificación Alerta</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Complete Readings Table -->
+                        <div class="readings-card">
+                            <div class="card-header">
+                                <h4>Lecturas del Ciclo Completo (<span id="readings-count-num">0</span>)</h4>
+                            </div>
+                            <div class="table-wrapper">
+                                <table class="data-table" id="readings-table">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Timestamp</th>
+                                            <th>Temp (°C)</th>
+                                            <th>Presión (bar)</th>
+                                            <th>Estado Lectura</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Error Toast Notification -->
+    <div id="toast" class="toast hidden">
+        <span id="toast-message">Mensaje de notificación</span>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
