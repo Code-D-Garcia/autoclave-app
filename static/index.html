@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/static/styles.css?v=4">
 </head>
 <body>
     <div class="app-layout">
@@ -23,7 +23,7 @@
                 </div>
                 <div class="brand-text">
                     <h1>Autoclave Control</h1>
-                    <span class="version-tag">v1.0.0 &bull; Control QC</span>
+                    <span class="version-tag">v1.0.0</span>
                 </div>
             </div>
 
@@ -132,21 +132,33 @@
 
         <!-- Main Workspace -->
         <main class="main-content">
+            <!-- Sidebar Overlay for Mobile -->
+            <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
             <!-- Top App Bar -->
             <header class="topbar">
-                <div class="topbar-title">
-                    <h2>Panel de Análisis y Conformidad de Esterilización</h2>
-                    <p class="subtitle">Verificación de ciclos de autoclaves según parámetros térmicos y barométricos.</p>
+                <div class="topbar-left">
+                    <button id="btn-toggle-sidebar" class="mobile-menu-btn" aria-label="Abrir Menú de Control">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </button>
+                    <div class="topbar-title">
+                        <h2>Panel de Análisis y Conformidad de Esterilización</h2>
+                        <p class="subtitle">Verificación de ciclos de autoclaves según parámetros térmicos y barométricos.</p>
+                    </div>
                 </div>
                 <div class="topbar-actions">
                     <button id="btn-show-analytics" class="btn btn-accent">
-                        📊 Métricas BD (PostgreSQL)
+                        📊 <span class="btn-text">Métricas BD</span>
                     </button>
                     <button id="btn-export-json" class="btn btn-secondary" disabled>
-                        📥 Exportar Resultado JSON
+                        📥 <span class="btn-text">Exportar JSON</span>
                     </button>
                     <button id="btn-clear-all" class="btn btn-outline">
-                        🗑️ Limpiar
+                        🗑️ <span class="btn-text">Limpiar</span>
                     </button>
                 </div>
             </header>
@@ -221,6 +233,9 @@
                     <div class="detail-content hidden" id="detail-content-view">
                         <!-- Detail Header -->
                         <div class="detail-header">
+                            <button id="btn-back-to-lots" class="btn btn-outline mobile-back-btn">
+                                ⬅️ <span class="btn-text">Volver a Lotes</span>
+                            </button>
                             <div class="detail-title-group">
                                 <div class="title-row">
                                     <h3 id="det-lot-id">LOT-XXXX</h3>
@@ -377,6 +392,6 @@
         <span id="toast-message">Mensaje de notificación</span>
     </div>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=4"></script>
 </body>
 </html>

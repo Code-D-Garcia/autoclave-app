@@ -50,7 +50,7 @@ body {
 /* App Layout */
 .app-layout {
     display: grid;
-    grid-template-columns: 360px 1fr;
+    grid-template-columns: minmax(280px, 320px) 1fr;
     height: 100vh;
     overflow: hidden;
 }
@@ -431,7 +431,7 @@ input:focus, select:focus {
 /* Metrics Grid */
 .metrics-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
     gap: 12px;
     padding: 16px 24px;
     background-color: var(--bg-main);
@@ -445,6 +445,8 @@ input:focus, select:focus {
     padding: 12px 16px;
     display: flex;
     flex-direction: column;
+    justify-content: center;
+    min-height: 76px;
 }
 
 .metric-label {
@@ -459,8 +461,10 @@ input:focus, select:focus {
     font-size: 24px;
     font-weight: 700;
     font-family: var(--font-mono);
-    color: var(--text-primary);
+    color: #ffffff;
     margin: 2px 0;
+    display: block;
+    line-height: 1.2;
 }
 
 .metric-foot {
@@ -475,7 +479,7 @@ input:focus, select:focus {
 /* Content Body */
 .content-body {
     display: grid;
-    grid-template-columns: 340px 1fr;
+    grid-template-columns: minmax(240px, 280px) 1fr;
     flex: 1;
     min-height: 0;
     overflow: hidden;
@@ -735,7 +739,7 @@ input:focus, select:focus {
 /* Spec Grid */
 .spec-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
     gap: 12px;
 }
 
@@ -999,4 +1003,259 @@ input:focus, select:focus {
 .empty-state .subtext {
     font-size: 11px;
     color: var(--text-muted);
+}
+
+/* ==========================================================================
+   FLUID RESPONSIVE DESIGN & ADAPTIVE BREAKPOINTS
+   ========================================================================== */
+
+.main-content {
+    min-width: 0;
+}
+
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-surface);
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.topbar-title {
+    min-width: 0;
+    flex: 1;
+}
+
+.topbar-title h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.topbar-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+
+.mobile-menu-btn {
+    display: none;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-highlight);
+    color: var(--text-primary);
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.mobile-menu-btn:hover {
+    background-color: var(--border-color);
+    color: var(--accent-blue);
+}
+
+.mobile-back-btn {
+    display: none;
+}
+
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(11, 15, 25, 0.75);
+    backdrop-filter: blur(4px);
+    z-index: 140;
+}
+
+.content-body {
+    min-width: 0;
+}
+
+.lots-sidebar, .lot-detail-panel {
+    min-width: 0;
+}
+
+.metric-card, .spec-item {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.spec-val {
+    word-break: break-word;
+}
+
+/* 1. Medium-Large / Half Screen (<= 1200px) */
+@media (max-width: 1200px) {
+    .app-layout {
+        grid-template-columns: 1fr;
+        position: relative;
+    }
+
+    .mobile-menu-btn {
+        display: inline-flex;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 320px;
+        max-width: 86vw;
+        height: 100vh;
+        z-index: 150;
+        transform: translateX(-100%);
+        transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.6);
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+    }
+
+    .sidebar-overlay.active {
+        display: block;
+    }
+
+    .content-body {
+        grid-template-columns: 260px 1fr;
+    }
+
+    .topbar-title .subtitle {
+        display: none;
+    }
+}
+
+/* 2. Tablet & Narrow Split Screen (<= 820px) */
+@media (max-width: 820px) {
+    .topbar {
+        padding: 10px 14px;
+    }
+
+    .topbar-title h2 {
+        font-size: 14px;
+    }
+
+    .topbar-actions .btn {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+
+    .metrics-grid {
+        padding: 10px 14px;
+        gap: 8px;
+    }
+
+    .content-body {
+        grid-template-columns: 1fr;
+        position: relative;
+    }
+
+    .lots-sidebar {
+        border-right: none;
+    }
+
+    .mobile-back-btn {
+        display: inline-flex;
+        margin-bottom: 8px;
+    }
+
+    .detail-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    /* Modos de visualización en pantallas reducidas */
+    .content-body.showing-detail .lots-sidebar {
+        display: none;
+    }
+
+    .content-body:not(.showing-detail) .lot-detail-panel {
+        display: none;
+    }
+
+    .lot-detail-panel {
+        padding: 12px;
+    }
+
+    .detail-empty {
+        padding: 24px 14px;
+    }
+}
+
+/* 3. Small Mobile Phones (<= 540px) */
+@media (max-width: 540px) {
+    .topbar-actions .btn-text {
+        display: none;
+    }
+
+    .topbar-actions .btn {
+        padding: 6px 8px;
+        font-size: 13px;
+    }
+
+    .metric-value {
+        font-size: 20px;
+    }
+
+    .title-row h3 {
+        font-size: 16px;
+    }
+
+    .meta-row {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .tab-btn {
+        padding: 8px 2px;
+        font-size: 11px;
+    }
+
+    .modal-content {
+        width: 96vw;
+        margin: 8px;
+    }
+
+    .modal-body {
+        padding: 12px;
+    }
+
+    .table-wrapper {
+        max-height: 200px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .data-table th, .data-table td {
+        padding: 6px 8px;
+        font-size: 11px;
+    }
+
+    .toast {
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        text-align: center;
+    }
 }

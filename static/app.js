@@ -29,6 +29,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const detailEmptyView = document.getElementById('detail-empty-view');
     const detailContentView = document.getElementById('detail-content-view');
 
+    // Mobile Drawer Setup
+    const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
+    const sidebar = document.querySelector('.sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const btnBackToLots = document.getElementById('btn-back-to-lots');
+    const contentBody = document.querySelector('.content-body');
+
+    function closeMobileSidebar() {
+        if (sidebar) sidebar.classList.remove('open');
+        if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+    }
+
+    if (btnToggleSidebar && sidebar && sidebarOverlay) {
+        btnToggleSidebar.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+            sidebarOverlay.classList.toggle('active');
+        });
+        sidebarOverlay.addEventListener('click', closeMobileSidebar);
+    }
+
+    if (btnBackToLots && contentBody) {
+        btnBackToLots.addEventListener('click', () => {
+            contentBody.classList.remove('showing-detail');
+        });
+    }
+
     // Tab Navigation
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -131,6 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Sample Data Loader
     btnLoadSample.addEventListener('click', async () => {
+        closeMobileSidebar();
         try {
             showToast('Cargando conjunto de datos de muestra...');
             const sampleRes = await fetch('/api/sample-data');
@@ -297,6 +324,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    function updateMetricsUI() {
+        if (!currentResponseData || !currentResponseData.Lots) {
+            statTotal.textContent = '0';
+            statApproved.textContent = '0';
+            statOnHold.textContent = '0';
+            statRejected.textContent = '0';
+            statTotalFoot.textContent = 'Esperando datos';
+            return;
+        }
+
+        const lots = currentResponseData.Lots || [];
+        const errors = currentResponseData.errors || [];
+
+        let approved = 0;
+        let onHold = 0;
+        let rejected = 0;
+
+        lots.forEach(l => {
+            const st = String(l.status || '').toUpperCase();
+            if (st === 'APPROVED') approved++;
+            else if (st === 'ON_HOLD') onHold++;
+            else if (st === 'REJECTED') rejected++;
+        });
+
+        statTotal.textContent = String(lots.length + errors.length);
+        statApproved.textContent = String(approved);
+        statOnHold.textContent = String(onHold);
+        statRejected.textContent = String(rejected + errors.length);
+        statTotalFoot.textContent = errors.length > 0 
+            ? `⚠️ ${errors.length} con error` 
+            : (lots.length > 0 ? `${lots.length} Lotes procesados` : 'Esperando datos');
+    }
+
     // Auto-load stored lots from DB/memory on startup (Page reload persistence)
     async function loadInitialStoredLots() {
         try {
@@ -305,9 +365,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.Lots && data.Lots.length > 0) {
                 renderResults(data);
                 showToast(`Historial cargado desde BD (${data.Lots.length} lotes).`);
+            } else {
+                updateMetricsUI();
             }
         } catch (e) {
             console.log('Sin historial inicial:', e);
+            updateMetricsUI();
         }
     }
     loadInitialStoredLots();
@@ -333,11 +396,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <span class="subtext">Sube un archivo JSON o usa "Cargar Datos de Muestra".</span>
             </div>
         `;
-        statTotal.textContent = '0';
-        statApproved.textContent = '0';
-        statOnHold.textContent = '0';
-        statRejected.textContent = '0';
-        statTotalFoot.textContent = 'Esperando datos';
         detailContentView.classList.add('hidden');
         detailEmptyView.classList.remove('hidden');
         btnExportJson.disabled = true;
@@ -418,26 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentResponseData.total_failed_lots = currentResponseData.errors.length;
 
         btnExportJson.disabled = false;
-
-        const lots = currentResponseData.Lots || [];
-        const errors = currentResponseData.errors || [];
-
-        let approved = 0;
-        let onHold = 0;
-        let rejected = 0;
-
-        lots.forEach(l => {
-            if (l.status === 'APPROVED') approved++;
-            else if (l.status === 'ON_HOLD') onHold++;
-            else if (l.status === 'REJECTED') rejected++;
-        });
-
-        statTotal.textContent = lots.length + errors.length;
-        statApproved.textContent = approved;
-        statOnHold.textContent = onHold;
-        statRejected.textContent = rejected + errors.length;
-        statTotalFoot.textContent = errors.length > 0 ? `⚠️ ${errors.length} con error de formato` : '0 Errores de estructura';
-
+        updateMetricsUI();
         filterAndRenderLots();
 
         if (!selectedLotId && lots.length > 0) {
@@ -518,6 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         detailEmptyView.classList.add('hidden');
         detailContentView.classList.remove('hidden');
+        if (contentBody) contentBody.classList.add('showing-detail');
 
         document.getElementById('det-lot-id').textContent = lot.lot_id;
         document.getElementById('det-product').textContent = lot.product;
@@ -587,6 +627,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         detailEmptyView.classList.add('hidden');
         detailContentView.classList.remove('hidden');
+        if (contentBody) contentBody.classList.add('showing-detail');
 
         document.getElementById('det-lot-id').textContent = err.lot_id;
         document.getElementById('det-product').textContent = 'Error de estructura en JSON';
