@@ -43,6 +43,20 @@ Este proyecto resuelve la necesidad de validar y analizar automáticamente la te
    pip install -r requirements.txt
    ```
 
+4. **Configurar las variables de entorno para la Base de Datos (Opcional)**:
+   El repositorio incluye el archivo `.env.example` como plantilla para la conexión a PostgreSQL:
+   ```bash
+   cp .env.example .env
+   ```
+   Edita las variables en `.env` según la configuración de tu instancia de PostgreSQL:
+   - `DB_HOST`: Host o IP del servidor PostgreSQL (ej. `localhost`).
+   - `DB_PORT`: Puerto del servicio de PostgreSQL (por defecto `5432`).
+   - `DB_NAME`: Nombre de la base de datos (ej. `db_autoclave_esterilizacion`).
+   - `DB_USER`: Usuario administrador / rol con permisos de lectura y escritura.
+   - `DB_PASSWORD`: Contraseña correspondiente.
+
+   *(Nota: Si no se define el archivo `.env` o la BD no se encuentra accesible, la API funcionará en modo fallback procesando los datos en memoria).*
+
 ---
 
 ## 💻 Ejecución de la Aplicación
@@ -93,6 +107,7 @@ La aplicación web ofrece diferentes alternativas para ingresar y evaluar los lo
 autoclave-app/
 ├── api.py                      # Servidor API REST con FastAPI (Endpoints, ruteo estático y analítica)
 ├── requirements.txt            # Dependencias del proyecto (FastAPI, Pytest, Psycopg2, etc.)
+├── .env.example                # Plantilla de variables de entorno para la BD PostgreSQL
 ├── README.md                   # Documentación principal del proyecto
 ├── DATA_SAMPLE.json            # Archivo de datos JSON de muestra para pruebas
 ├── RESPUESTAS_POSTGRESQL.md    # Respuestas teóricas y técnicas a las 5 preguntas de PostgreSQL
