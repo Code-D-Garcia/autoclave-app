@@ -11,6 +11,58 @@
 
 Este proyecto resuelve la necesidad de validar y analizar automáticamente la telemetría (temperatura y presión) de lotes de esterilización en autoclaves. El sistema evalúa cada lectura registrada frente a los límites técnicos configurados.
 
+## 🚀 Requisitos e Instalación
+
+### Requisitos Previos
+- **Python**: Versión 3.9 o superior.
+- **pip**: Gestor de paquetes de Python.
+- **postgresql**: Version 16 o superior [Revisar script para conocer mas sobre la BD](script_prueba_postgresql.sql) 
+
+### Pasos de Instalación
+
+1. **Clonar o descargar el repositorio**:
+   ```bash
+   git clone https://github.com/Code-D-Garcia/autoclave-app.git
+   cd autoclave-app
+   ```
+
+2. **Crear y activar un entorno virtual (Recomendado)**:
+   - En Windows (PowerShell):
+     ```powershell
+     python -m venv venv
+     .\venv\Scripts\Activate.ps1
+     ```
+   - En Linux/macOS:
+     ```bash
+     python3 -m venv venv
+     source venv/bin/activate
+     ```
+
+3. **Instalar las dependencias**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+---
+
+## 💻 Ejecución de la Aplicación
+
+Para iniciar el servidor web y la API REST en modo de desarrollo local:
+
+```bash
+py -m uvicorn api:app --reload
+```
+*(o usa `python -m uvicorn api:app --reload`)*
+
+Una vez iniciado el servidor, accede a través de tu navegador:
+
+- **🖥️ Tablero de Control Web**: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+- **📚 Documentación Swagger UI (OpenAPI)**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- **❤️ Chequeo de Salud de la API**: [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health)
+
+---
+
+
 ### 🌟 Puntos Destacados de la Solución
 - **Arquitectura Limpia**: Separación estricta entre modelos de dominio, validadores, procesadores de regla de negocio, servicio de orquestación y capa de API REST.
 - **API REST con FastAPI**: Endpoints asíncronos con documentación OpenAPI (Swagger) interactiva generada automáticamente.
@@ -60,56 +112,6 @@ autoclave-app/
 - **`APPROVED` (Aprobado)**: `0` alertas registradas.
 - **`ON_HOLD` (En Observación)**: De `1` a `2` alertas registradas.
 - **`REJECTED` (Rechazado)**: Más de `2` alertas registradas o fallos de validación de estructura.
-
----
-
-## 🚀 Requisitos e Instalación
-
-### Requisitos Previos
-- **Python**: Versión 3.9 o superior.
-- **pip**: Gestor de paquetes de Python.
-
-### Pasos de Instalación
-
-1. **Clonar o descargar el repositorio**:
-   ```bash
-   git clone https://github.com/Code-D-Garcia/autoclave-app.git
-   cd autoclave-app
-   ```
-
-2. **Crear y activar un entorno virtual (Recomendado)**:
-   - En Windows (PowerShell):
-     ```powershell
-     python -m venv venv
-     .\venv\Scripts\Activate.ps1
-     ```
-   - En Linux/macOS:
-     ```bash
-     python3 -m venv venv
-     source venv/bin/activate
-     ```
-
-3. **Instalar las dependencias**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
----
-
-## 💻 Ejecución de la Aplicación
-
-Para iniciar el servidor web y la API REST en modo de desarrollo local:
-
-```bash
-py -m uvicorn api:app --reload
-```
-*(o usa `python -m uvicorn api:app --reload`)*
-
-Una vez iniciado el servidor, accede a través de tu navegador:
-
-- **🖥️ Tablero de Control Web**: [http://127.0.0.1:8000](http://127.0.0.1:8000)
-- **📚 Documentación Swagger UI (OpenAPI)**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-- **❤️ Chequeo de Salud de la API**: [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health)
 
 ---
 
