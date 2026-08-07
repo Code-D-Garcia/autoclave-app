@@ -62,6 +62,22 @@ Una vez iniciado el servidor, accede a través de tu navegador:
 
 ---
 
+### 📸 Carga de Datos en la Interfaz Web
+
+La aplicación web ofrece diferentes alternativas para ingresar y evaluar los lotes de esterilización:
+
+1. **Cargar archivo `.json`**: La interfaz incluye un botón para cargar un archivo `.json` desde el equipo. Se incluye en la raíz del proyecto el archivo de ejemplo `DATA_SAMPLE.json` para facilitar las pruebas.
+
+![Cargar JSON de Ejemplo](public/cargar_sample.webp)
+
+2. **Pegar JSON manualmente**: Alternativamente, se puede pegar el contenido JSON directamente en el editor de código integrado en la pantalla.
+
+![Pegar JSON Manualmente](public/pegar_sample.webp)
+
+> [!NOTE]
+> **Nota Técnica:** En caso de experimentar latencia en la renderización asíncrona de los componentes o retrasos en la actualización del DOM tras procesar el *payload*, se recomienda recargar la página (`F5` / `Ctrl + R`) para re-inicializar el estado del cliente y forzar la re-sincronización con la API REST.
+
+---
 
 ### 🌟 Puntos Destacados de la Solución
 - **Arquitectura Limpia**: Separación estricta entre modelos de dominio, validadores, procesadores de regla de negocio, servicio de orquestación y capa de API REST.
@@ -78,9 +94,13 @@ autoclave-app/
 ├── api.py                      # Servidor API REST con FastAPI (Endpoints, ruteo estático y analítica)
 ├── requirements.txt            # Dependencias del proyecto (FastAPI, Pytest, Psycopg2, etc.)
 ├── README.md                   # Documentación principal del proyecto
+├── DATA_SAMPLE.json            # Archivo de datos JSON de muestra para pruebas
 ├── RESPUESTAS_POSTGRESQL.md    # Respuestas teóricas y técnicas a las 5 preguntas de PostgreSQL
 ├── script_prueba_postgresql.sql# Script SQL ejecutable en pgAdmin / psql para probar la BD
 ├── .gitignore                  # Exclusión de archivos temporales
+├── public/                     # Recursos gráficos para documentación
+│   ├── cargar_sample.webp      # Captura del botón para cargar archivo JSON de muestra
+│   └── pegar_sample.webp       # Captura de la opción para pegar JSON manualmente
 ├── src/                        # Núcleo de lógica de negocio (Domain-Driven Design)
 │   ├── __init__.py
 │   ├── models.py               # Dataclasses y Enums (Lot, Reading, LotReport, Status)
