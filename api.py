@@ -56,6 +56,14 @@ def read_root():
     return HTMLResponse("<h1>Autoclave Sterilization API Running</h1><p>Visita /docs para la documentación interactiva.</p>")
 
 
+@app.on_event("startup")
+def startup_event():
+    try:
+        from src.database import init_db
+        init_db()
+    except Exception as e:
+        logger.debug(f"DB startup init info: {e}")
+
 @app.get("/api/health")
 def health_check():
     """
@@ -66,6 +74,46 @@ def health_check():
         "service": "Autoclave Sterilization Control API",
         "version": "1.0.0"
     }
+
+@app.get("/api/analytics")
+def get_analytics():
+    """
+    Retorna los resultados de la consulta analítica de PostgreSQL (Pregunta 2 de la prueba técnica).
+    """
+    try:
+        from src.database import get_analytical_summary
+        metrics = get_analytical_summary()
+        return {"status": "ok", "metrics": metrics}
+    except Exception as e:
+        return {"status": "error", "detail": str(e), "metrics": []}
+
+@app.get("/api/lots")
+def get_stored_lots():
+    """
+    Retorna todos los lotes guardados en la BD / memoria para mantener el estado al recargar la página.
+    """
+    try:
+        from src.database import get_all_stored_lots
+        lots = get_all_stored_lots()
+        return {
+            "total_processed_lots": len(lots),
+            "total_failed_lots": 0,
+            "Lots": lots
+        }
+    except Exception as e:
+        return {"total_processed_lots": 0, "total_failed_lots": 0, "Lots": []}
+
+@app.delete("/api/lots")
+def clear_stored_lots():
+    """
+    Elimina todos los lotes de la base de datos PostgreSQL y de la memoria cuando se presiona 'Limpiar'.
+    """
+    try:
+        from src.database import clear_all_stored_lots
+        clear_all_stored_lots()
+        return {"status": "cleared", "message": "Base de datos e historial limpiados correctamente."}
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 @app.post("/api/process-data")
@@ -118,8 +166,17 @@ def process_single_lot_endpoint(lot_data: Dict[str, Any] = Body(...)):
     Procesa un único lote directo (objeto individual de lote).
     """
     try:
+        from src.database import is_lot_registered, save_lot_report
+        raw_id = lot_data.get("lot_id") or lot_data.get("lote_id") or lot_data.get("id_lote") if isinstance(lot_data, dict) else None
+        if raw_id and is_lot_registered(raw_id):
+            raise LoteValidationError(str(raw_id), f"El lote '{raw_id}' ya fue registrado previamente en la base de datos (Lote duplicado).")
+
         lot_obj = validate_lot_data(lot_data)
         report = process_single_lot(lot_obj)
+        try:
+            save_lot_report(report)
+        except Exception as db_err:
+            logger.debug(f"Nota DB: {db_err}")
         return JSONResponse(status_code=status.HTTP_200_OK, content=report.to_dict())
     except SterilizationDomainError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))

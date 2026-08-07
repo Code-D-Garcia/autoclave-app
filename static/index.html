@@ -139,6 +139,9 @@
                     <p class="subtitle">Verificación de ciclos de autoclaves según parámetros térmicos y barométricos.</p>
                 </div>
                 <div class="topbar-actions">
+                    <button id="btn-show-analytics" class="btn btn-accent">
+                        📊 Métricas BD (PostgreSQL)
+                    </button>
                     <button id="btn-export-json" class="btn btn-secondary" disabled>
                         📥 Exportar Resultado JSON
                     </button>
@@ -295,6 +298,78 @@
                 </section>
             </div>
         </main>
+    </div>
+
+    <!-- PostgreSQL Analytics Modal -->
+    <div id="analytics-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <h3>📊 Consulta Analítica PostgreSQL (Pregunta 2 - Prueba Técnica)</h3>
+                    <p class="subtitle">Métricas agrupadas por autoclave y mes generadas directamente en PostgreSQL</p>
+                </div>
+                <button id="btn-close-analytics" class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="metrics-grid" style="grid-template-columns: repeat(3, 1fr); padding: 0 0 16px 0; border: none; background: transparent;">
+                    <div class="metric-card">
+                        <span class="metric-label">Autoclaves Activas</span>
+                        <span class="metric-value" id="db-stat-autoclaves">0</span>
+                    </div>
+                    <div class="metric-card success">
+                        <span class="metric-label">Lotes Registrados BD</span>
+                        <span class="metric-value" id="db-stat-lotes">0</span>
+                    </div>
+                    <div class="metric-card warning">
+                        <span class="metric-label">Alertas Acumuladas BD</span>
+                        <span class="metric-value" id="db-stat-alertas">0</span>
+                    </div>
+                </div>
+
+                <div class="table-wrapper" style="max-height: 320px;">
+                    <table class="data-table" id="db-analytics-table">
+                        <thead>
+                            <tr>
+                                <th>Autoclave ID</th>
+                                <th>Mes</th>
+                                <th>Lotes Procesados</th>
+                                <th>Temp Promedio (°C)</th>
+                                <th>Alertas Fuera Rango</th>
+                                <th>% Lotes Aprobados</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Duplicate / Error Modal -->
+    <div id="error-modal" class="modal hidden">
+        <div class="modal-content modal-danger">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <h3 id="error-modal-title">⚠️ Lote Duplicado Detectado</h3>
+                    <p class="subtitle" id="error-modal-subtitle">Atención: No se puede guardar este lote porque ya existe en el sistema</p>
+                </div>
+                <button id="btn-close-error" class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="error-box-content">
+                    <div class="error-icon">⚠️</div>
+                    <div class="error-text">
+                        <p id="error-modal-message" class="error-main-msg">El lote ya fue registrado previamente en la base de datos.</p>
+                        <p class="subtext" style="margin-top: 10px; color: var(--text-muted);">
+                            Si deseas cargar de nuevo estos datos o iniciar un procesamiento limpio, haz clic en el botón <strong>"🗑️ Limpiar"</strong> para vaciar el historial.
+                        </p>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:flex-end; margin-top:20px;">
+                    <button id="btn-error-accept" class="btn btn-secondary">Entendido</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Error Toast Notification -->

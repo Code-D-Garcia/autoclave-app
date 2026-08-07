@@ -6,7 +6,7 @@ procesamiento de ciclos de esterilización.
 import json
 import logging
 from typing import Dict, Any, List, Optional
-from src.exceptions import SterilizationDomainError, InvalidJSONDataError
+from src.exceptions import SterilizationDomainError, InvalidJSONDataError, LoteValidationError
 from src.validators import validate_lot_data
 from src.processors import process_single_lot
 from src.models import LotReport
@@ -62,9 +62,23 @@ class SterilizationService:
                 lot_id = f"Lote #{idx + 1}"
                 
             try:
+                # Detección de lotes duplicados en la BD / memoria
+                from src.database import is_lot_registered
+                raw_id = item.get("lot_id") or item.get("lote_id") or item.get("id_lote") if isinstance(item, dict) else None
+                if raw_id and is_lot_registered(raw_id):
+                    raise LoteValidationError(str(raw_id), f"El lote '{raw_id}' ya fue registrado previamente en la base de datos (Lote duplicado).")
+
                 lot_parsed = validate_lot_data(item)
                 report = process_single_lot(lot_parsed)
                 reports.append(report)
+
+                # Persistencia opcional en PostgreSQL (si la BD está conectada)
+                try:
+                    from src.database import save_lot_report
+                    save_lot_report(report)
+                except Exception as db_err:
+                    self.logger.debug(f"Nota: Persistencia DB omitida ({db_err})")
+
                 self.logger.info(
                     "Lote '%s' procesado con éxito. Estado: %s, Alertas: %d",
                     report.lot_id,

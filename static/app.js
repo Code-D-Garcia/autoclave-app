@@ -75,8 +75,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await res.json();
             if (!res.ok) {
-                throw new Error(data.detail || 'Error procesando archivo');
+                if (!checkAndDisplayErrors(data)) {
+                    showErrorModal('⚠️ Error al Procesar Archivo', data.detail || 'Error procesando archivo');
+                }
+                return;
             }
+            checkAndDisplayErrors(data);
             renderResults(data);
             showToast(`Archivo '${file.name}' procesado con éxito.`);
         } catch (err) {
@@ -111,7 +115,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(payload)
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.detail || 'Error al procesar JSON');
+            if (!res.ok) {
+                if (!checkAndDisplayErrors(data)) {
+                    showErrorModal('⚠️ Error en JSON', data.detail || 'Error al procesar JSON');
+                }
+                return;
+            }
+            checkAndDisplayErrors(data);
             renderResults(data);
             showToast('JSON procesado correctamente.');
         } catch (err) {
@@ -132,8 +142,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(sampleData)
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.detail || 'Error en muestra');
-
+            if (!res.ok) {
+                if (!checkAndDisplayErrors(data)) {
+                    showErrorModal('⚠️ Error en Datos de Muestra', data.detail || 'Error en muestra');
+                }
+                return;
+            }
+            checkAndDisplayErrors(data);
             jsonEditor.value = JSON.stringify(sampleData, null, 2);
             renderResults(data);
             showToast('¡Lotes de muestra cargados y analizados!');
@@ -257,7 +272,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(lotPayload)
             });
             const lotReport = await res.json();
-            if (!res.ok) throw new Error(lotReport.detail || 'Error validando lote');
+            if (!res.ok) {
+                if (!checkAndDisplayErrors(lotReport)) {
+                    showErrorModal('⚠️ Error al Crear Lote', lotReport.detail || 'Error validando lote');
+                }
+                return;
+            }
 
             if (!currentResponseData) {
                 currentResponseData = {
@@ -277,8 +297,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Clear All
-    btnClearAll.addEventListener('click', () => {
+    // Auto-load stored lots from DB/memory on startup (Page reload persistence)
+    async function loadInitialStoredLots() {
+        try {
+            const res = await fetch('/api/lots');
+            const data = await res.json();
+            if (data.Lots && data.Lots.length > 0) {
+                renderResults(data);
+                showToast(`Historial cargado desde BD (${data.Lots.length} lotes).`);
+            }
+        } catch (e) {
+            console.log('Sin historial inicial:', e);
+        }
+    }
+    loadInitialStoredLots();
+
+    // Clear All (Removes from DB and UI)
+    btnClearAll.addEventListener('click', async () => {
+        try {
+            showToast('Limpiando base de datos e historial...');
+            await fetch('/api/lots', { method: 'DELETE' });
+        } catch (e) {
+            console.error('Error al limpiar BD:', e);
+        }
+
         currentResponseData = null;
         selectedLotId = null;
         lotsListContainer.innerHTML = `
@@ -299,7 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
         detailContentView.classList.add('hidden');
         detailEmptyView.classList.remove('hidden');
         btnExportJson.disabled = true;
-        showToast('Datos limpiados.');
+        showToast('Base de datos y vista limpiadas.');
     });
 
     // Export JSON
@@ -341,13 +383,44 @@ document.addEventListener('DOMContentLoaded', () => {
         renderLotCards(validLots, failedLots);
     }
 
-    // Render Full Results
+    // Render Full Results (Con preservación de lotes y filtrado de duplicados)
     function renderResults(data) {
-        currentResponseData = data;
+        if (!data) return;
+
+        // Si ya existen datos previos en la vista, fusionar sin perder lo procesado
+        if (!currentResponseData) {
+            currentResponseData = {
+                total_processed_lots: 0,
+                total_failed_lots: 0,
+                Lots: [],
+                errors: []
+            };
+        }
+
+        const existingLotsMap = new Map();
+        (currentResponseData.Lots || []).forEach(l => existingLotsMap.set(l.lot_id, l));
+
+        // Agregar/Actualizar nuevos lotes procesados exitosamente
+        (data.Lots || []).forEach(l => existingLotsMap.set(l.lot_id, l));
+        currentResponseData.Lots = Array.from(existingLotsMap.values());
+
+        // Filtrar errores: No mostrar como tarjetas de error los duplicados (ya mostrados en Modal)
+        // ni sobreescribir lotes que ya fueron procesados con éxito
+        const filteredNewErrors = (data.errors || []).filter(err => {
+            const isDuplicate = err.error && err.error.toLowerCase().includes('duplicado');
+            const isAlreadyLoaded = (err.lot_id && existingLotsMap.has(err.lot_id)) || 
+                                    (err.error && Array.from(existingLotsMap.keys()).some(k => err.error.includes(k)));
+            return !isDuplicate && !isAlreadyLoaded;
+        });
+
+        currentResponseData.errors = filteredNewErrors;
+        currentResponseData.total_processed_lots = currentResponseData.Lots.length;
+        currentResponseData.total_failed_lots = currentResponseData.errors.length;
+
         btnExportJson.disabled = false;
 
-        const lots = data.Lots || [];
-        const errors = data.errors || [];
+        const lots = currentResponseData.Lots || [];
+        const errors = currentResponseData.errors || [];
 
         let approved = 0;
         let onHold = 0;
@@ -363,12 +436,14 @@ document.addEventListener('DOMContentLoaded', () => {
         statApproved.textContent = approved;
         statOnHold.textContent = onHold;
         statRejected.textContent = rejected + errors.length;
-        statTotalFoot.textContent = errors.length > 0 ? `⚠️ ${errors.length} con error de validación` : '0 Errores de estructura';
+        statTotalFoot.textContent = errors.length > 0 ? `⚠️ ${errors.length} con error de formato` : '0 Errores de estructura';
 
         filterAndRenderLots();
 
-        if (lots.length > 0) {
+        if (!selectedLotId && lots.length > 0) {
             selectLot(lots[0].lot_id);
+        } else if (selectedLotId && existingLotsMap.has(selectedLotId)) {
+            selectLot(selectedLotId);
         } else if (errors.length > 0) {
             selectFailedLot(errors[0]);
         }
@@ -542,6 +617,108 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector('#readings-table tbody').innerHTML = `
             <tr><td colspan="5" style="color:#f87171;">Imposible procesar lecturas debido al error de validación en el lote.</td></tr>
         `;
+    }
+
+    // PostgreSQL Analytics Modal Handling
+    const btnShowAnalytics = document.getElementById('btn-show-analytics');
+    const btnCloseAnalytics = document.getElementById('btn-close-analytics');
+    const analyticsModal = document.getElementById('analytics-modal');
+
+    if (btnShowAnalytics && analyticsModal) {
+        btnShowAnalytics.addEventListener('click', async () => {
+            try {
+                showToast('Consultando métricas en PostgreSQL...');
+                const res = await fetch('/api/analytics');
+                const data = await res.json();
+                
+                const metrics = data.metrics || [];
+                const tbody = document.querySelector('#db-analytics-table tbody');
+                tbody.innerHTML = '';
+
+                let totalLotes = 0;
+                let totalAlertas = 0;
+                const autoclavesSet = new Set();
+
+                if (metrics.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#94a3b8;">No se encontraron datos analíticos guardados en PostgreSQL aún.</td></tr>`;
+                } else {
+                    metrics.forEach(m => {
+                        totalLotes += m.lotes_procesados || 0;
+                        totalAlertas += m.total_lecturas_fuera_de_rango || 0;
+                        autoclavesSet.add(m.autoclave_id);
+
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td><strong>${m.autoclave_id}</strong></td>
+                            <td>${m.mes}</td>
+                            <td>${m.lotes_procesados}</td>
+                            <td>${m.temperatura_promedio}°C</td>
+                            <td>${m.total_lecturas_fuera_de_rango > 0 ? `<span style="color:#f87171; font-weight:bold;">${m.total_lecturas_fuera_de_rango}</span>` : '0'}</td>
+                            <td><span class="badge ${m.porcentaje_lotes_aprobados === 100 ? 'badge-APPROVED' : 'badge-ON_HOLD'}">${m.porcentaje_lotes_aprobados}%</span></td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+
+                document.getElementById('db-stat-autoclaves').textContent = autoclavesSet.size;
+                document.getElementById('db-stat-lotes').textContent = totalLotes;
+                document.getElementById('db-stat-alertas').textContent = totalAlertas;
+
+                analyticsModal.classList.remove('hidden');
+            } catch (err) {
+                showToast(`Error al consultar BD: ${err.message}`, 6000);
+            }
+        });
+
+        if (btnCloseAnalytics) {
+            btnCloseAnalytics.addEventListener('click', () => {
+                analyticsModal.classList.add('hidden');
+            });
+        }
+
+        analyticsModal.addEventListener('click', (e) => {
+            if (e.target === analyticsModal) {
+                analyticsModal.classList.add('hidden');
+            }
+        });
+    }
+
+    // Error Modal Handler for Duplicates and Validations
+    const errorModal = document.getElementById('error-modal');
+    const btnCloseError = document.getElementById('btn-close-error');
+    const btnErrorAccept = document.getElementById('btn-error-accept');
+
+    function showErrorModal(title, msg) {
+        if (!errorModal) return;
+        document.getElementById('error-modal-title').textContent = title || '⚠️ Lote Duplicado Detectado';
+        document.getElementById('error-modal-message').textContent = msg || 'Ocurrió un error de validación en el lote.';
+        errorModal.classList.remove('hidden');
+    }
+
+    function checkAndDisplayErrors(data) {
+        if (!data) return false;
+        if (data.errors && data.errors.length > 0) {
+            const dupErr = data.errors.find(e => e.error && e.error.toLowerCase().includes('duplicado'));
+            if (dupErr) {
+                showErrorModal('⚠️ Lote Duplicado Detectado', dupErr.error);
+                return true;
+            }
+            showErrorModal('⚠️ Error de Validación', data.errors[0].error);
+            return true;
+        }
+        if (data.detail && typeof data.detail === 'string' && data.detail.toLowerCase().includes('duplicado')) {
+            showErrorModal('⚠️ Lote Duplicado Detectado', data.detail);
+            return true;
+        }
+        return false;
+    }
+
+    if (btnCloseError) btnCloseError.addEventListener('click', () => errorModal.classList.add('hidden'));
+    if (btnErrorAccept) btnErrorAccept.addEventListener('click', () => errorModal.classList.add('hidden'));
+    if (errorModal) {
+        errorModal.addEventListener('click', (e) => {
+            if (e.target === errorModal) errorModal.classList.add('hidden');
+        });
     }
 
     function showToast(msg, duration = 4000) {
